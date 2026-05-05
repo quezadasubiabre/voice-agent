@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Walkie Talkie</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Bebas+Neue&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1a18;
+      --panel: #222220;
+      --metal: #2e2e2b;
+      --border: #3a3a36;
+      --accent: #f5c842;
+      --accent-dim: #3d3010;
+      --red: #e84040;
+      --green: #4caf50;
+      --text: #d4cfc0;
+      --muted: #6b6860;
+      --font-mono: 'Courier Prime', monospace;
+      --font-display: 'Bebas Neue', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at 30% 20%, rgba(245,200,66,0.03) 0%, transparent 60%),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 4px);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      color: var(--text);
+    }
+
+    .device {
+      width: 360px;
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 18px 18px 28px 28px;
+      padding: 28px 24px 36px;
+      box-shadow:
+        0 30px 80px rgba(0,0,0,0.7),
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 -1px 0 rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: relative;
+    }
+
+    /* top screws */
+    .device::before, .device::after {
+      content: '✕';
+      position: absolute;
+      top: 14px;
+      font-size: 8px;
+      color: var(--border);
+    }
+    .device::before { left: 18px; }
+    .device::after { right: 18px; }
+
+    .brand {
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 28px;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(245,200,66,0.3);
+    }
+
+    .brand span { color: var(--muted); font-size: 14px; letter-spacing: 0.3em; display: block; margin-top: -4px; }
+
+    /* LCD screen */
+    .screen {
+      background: #0d1208;
+      border: 2px solid #111;
+      border-radius: 6px;
+      padding: 12px 16px;
+      min-height: 90px;
+      font-size: 12px;
+      line-height: 1.8;
+      color: #6dbf67;
+      font-family: var(--font-mono);
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 0 1px #1a2a18;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 3px);
+      pointer-events: none;
+    }
+
+    .screen-line { opacity: 0.85; }
+    .screen-line.dim { color: #3a6b38; }
+    .screen-line.bright { color: #a0e89a; font-weight: 700; }
+    .screen-line.warn { color: #e0a030; }
+
+    /* visualizer */
+    .viz-wrap {
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 1px;
+    }
+
+    .viz-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* status row */
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      padding: 0 2px;
+    }
+
+    .indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .led {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: all 0.2s;
+    }
+    .led.on-green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .led.on-red { background: var(--red); box-shadow: 0 0 10px var(--red); animation: blink 0.6s infinite; }
+    .led.on-yellow { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: blink 0.4s infinite; }
+
+    @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0.3 } }
+
+    /* PTT button */
+    .ptt-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ptt-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    #ptt {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #444, #1a1a1a);
+      border: 3px solid #444;
+      box-shadow:
+        0 6px 20px rgba(0,0,0,0.7),
+        inset 0 2px 4px rgba(255,255,255,0.08),
+        inset 0 -2px 4px rgba(0,0,0,0.5);
+      cursor: pointer;
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: 0.1em;
+      color: var(--text);
+      transition: all 0.08s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      position: relative;
+    }
+
+    #ptt::after {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    #ptt:hover { border-color: #666; }
+
+    #ptt.active {
+      background: radial-gradient(circle at 38% 35%, #7a3010, #3a1008);
+      border-color: var(--red);
+      box-shadow:
+        0 2px 8px rgba(0,0,0,0.7),
+        0 0 20px rgba(232,64,64,0.4),
+        inset 0 2px 4px rgba(0,0,0,0.5);
+      transform: scale(0.96) translateY(2px);
+      color: var(--red);
+    }
+
+    #ptt.receiving {
+      background: radial-gradient(circle at 38% 35%, #1a3a10, #0a1a08);
+      border-color: var(--green);
+      box-shadow: 0 0 24px rgba(76,175,80,0.3);
+      color: var(--green);
+    }
+
+    /* connect row */
+    .connect-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--metal);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--muted); }
+
+    button.small {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 8px 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    button.small:hover { background: #5a4010; }
+    button.small:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat-label { letter-spacing: 0.1em; font-size: 10px; }
+    .stat-value { color: var(--text); font-size: 13px; }
+  </style>
+</head>
+<body>
+<div class="device">
+  <div class="brand">WAVENET <span>AUDIO RELAY v1.0</span></div>
+
+  <!-- LCD -->
+  <div class="screen" id="screen">
+    <div class="screen-line dim">// WAVENET TERMINAL</div>
+    <div class="screen-line dim">// ENTER CALLSIGN TO CONNECT</div>
+  </div>
+
+  <!-- Waveform visualizer -->
+  <div class="viz-wrap">
+    <canvas id="viz" height="36"></canvas>
+  </div>
+
+  <!-- Status -->
+  <div class="status-row">
+    <div class="indicator">
+      <div class="led" id="conn-led"></div>
+      <span id="conn-status">OFFLINE</span>
+    </div>
+    <div class="indicator">
+      <div class="led" id="audio-led"></div>
+      <span id="audio-status">IDLE</span>
+    </div>
+    <span id="peers">0 PEERS</span>
+  </div>
+
+  <!-- PTT -->
+  <div class="ptt-wrap">
+    <div class="ptt-label">push to talk</div>
+    <button id="ptt" disabled>PTT</button>
+    <div class="ptt-label" id="ptt-hint">connect first</div>
+  </div>
+
+  <!-- Connect -->
+  <div class="connect-row">
+    <input id="callsign" type="text" placeholder="callsign (e.g. ALPHA-1)" maxlength="16" />
+    <button class="small" id="conn-btn" onclick="toggleConnect()">CONNECT</button>
+  </div>
+
+  <div class="grid-bottom">
+    <div class="stat">
+      <span class="stat-label">SENT</span>
+      <span class="stat-value" id="stat-sent">0 chunks</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">RECEIVED</span>
+      <span class="stat-value" id="stat-recv">0 chunks</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">SAMPLE RATE</span>
+      <span class="stat-value">16 kHz</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">CODEC</span>
+      <span class="stat-value">PCM 16-bit</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let ws = null;
+let mediaRecorder = null;
+let audioCtx = null;
+let analyser = null;
+let vizSource = null;
+let vizRaf = null;
+let sentChunks = 0;
+let recvChunks = 0;
+let peerCount = 0;
+let isRecording = false;
+let callsign = '';
+
+const SAMPLE_RATE = 16000;
+
+// ─── Canvas Visualizer ────────────────────────────────────────────────────────
+const canvas = document.getElementById('viz');
+const ctx2d = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx2d.scale(devicePixelRatio, devicePixelRatio);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function drawIdle() {
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  ctx2d.clearRect(0,0,W,H);
+  ctx2d.strokeStyle = '#1a3a18';
+  ctx2d.lineWidth = 1;
+  ctx2d.beginPath();
+  ctx2d.moveTo(0, H/2);
+  ctx2d.lineTo(W, H/2);
+  ctx2d.stroke();
+}
+drawIdle();
+
+function resampleTo16k(float32, fromRate) {
+  if (fromRate === SAMPLE_RATE) return float32;
+  const ratio = fromRate / SAMPLE_RATE;
+  const newLength = Math.round(float32.length / ratio);
+  const result = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    const pos = i * ratio;
+    const idx = Math.floor(pos);
+    const frac = pos - idx;
+    result[i] = (float32[idx] || 0) + frac * ((float32[idx + 1] || 0) - (float32[idx] || 0));
+  }
+  return result;
+}
+
+function startViz(stream) {
+  if (!audioCtx) audioCtx = new AudioContext();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  vizSource = audioCtx.createMediaStreamSource(stream);
+  vizSource.connect(analyser);
+  drawViz();
+}
+
+function stopViz() {
+  if (vizRaf) cancelAnimationFrame(vizRaf);
+  vizSource?.disconnect();
+  drawIdle();
+}
+
+function drawViz() {
+  vizRaf = requestAnimationFrame(drawViz);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteTimeDomainData(buf);
+  ctx2d.clearRect(0,0,W,H);
+  ctx2d.strokeStyle = isRecording ? '#e84040' : '#4caf50';
+  ctx2d.lineWidth = 1.5;
+  ctx2d.beginPath();
+  const step = W / buf.length;
+  for (let i = 0; i < buf.length; i++) {
+    const y = (buf[i] / 128 - 1) * (H / 2) + H / 2;
+    i === 0 ? ctx2d.moveTo(0, y) : ctx2d.lineTo(i * step, y);
+  }
+  ctx2d.stroke();
+}
+
+// ─── Screen log ───────────────────────────────────────────────────────────────
+function log(text, type = '') {
+  const screen = document.getElementById('screen');
+  const el = document.createElement('div');
+  el.className = 'screen-line ' + type;
+  el.textContent = text;
+  screen.appendChild(el);
+  // keep last 6 lines
+  while (screen.children.length > 6) screen.removeChild(screen.firstChild);
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function setConnected(yes) {
+  document.getElementById('conn-led').className = 'led ' + (yes ? 'on-green' : '');
+  document.getElementById('conn-status').textContent = yes ? 'ONLINE' : 'OFFLINE';
+  document.getElementById('conn-btn').textContent = yes ? 'DISCON' : 'CONNECT';
+  document.getElementById('callsign').disabled = yes;
+  document.getElementById('ptt').disabled = !yes;
+  document.getElementById('ptt-hint').textContent = yes ? 'hold to transmit' : 'connect first';
+}
+
+function setAudioStatus(status) {
+  const led = document.getElementById('audio-led');
+  const txt = document.getElementById('audio-status');
+  if (status === 'TX') {
+    led.className = 'led on-red'; txt.textContent = 'TX';
+  } else if (status === 'RX') {
+    led.className = 'led on-yellow'; txt.textContent = 'RX';
+  } else {
+    led.className = 'led'; txt.textContent = 'IDLE';
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-sent').textContent = sentChunks + ' chunks';
+  document.getElementById('stat-recv').textContent = recvChunks + ' chunks';
+}
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+function toggleConnect() {
+  if (ws) { disconnect(); return; }
+  callsign = document.getElementById('callsign').value.trim().toUpperCase() || 'ANON';
+  document.getElementById('callsign').value = callsign;
+  connect();
+}
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => {
+    setConnected(true);
+    log(`// CONNECTED AS ${callsign}`, 'bright');
+    log(`// FREQ 16kHz | PCM-16 MONO`, 'dim');
+    ws.send(JSON.stringify({ type: 'join', callsign }));
+  };
+
+  ws.onmessage = async (e) => {
+    if (typeof e.data === 'string') {
+      // control message
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'join') {
+          peerCount++;
+          document.getElementById('peers').textContent = peerCount + ' PEERS';
+          log(`>> ${msg.callsign} JOINED`, 'warn');
+        } else if (msg.type === 'leave') {
+          peerCount = Math.max(0, peerCount - 1);
+          document.getElementById('peers').textContent = peerCount + ' PEERS';
+          log(`<< ${msg.callsign} LEFT`, 'dim');
+        } else if (msg.type === 'talking') {
+          const ptt = document.getElementById('ptt');
+          if (msg.state === 'start') {
+            ptt.classList.add('receiving');
+            setAudioStatus('RX');
+            log(`>> ${msg.callsign} TRANSMITTING...`, 'bright');
+          } else {
+            ptt.classList.remove('receiving');
+            setAudioStatus('IDLE');
+          }
+        }
+      } catch {}
+    } else {
+      // raw PCM audio bytes — play it back
+      await playPCM(e.data);
+      recvChunks++;
+      updateStats();
+    }
+  };
+
+  ws.onclose = () => {
+    setConnected(false);
+    peerCount = 0;
+    document.getElementById('peers').textContent = '0 PEERS';
+    log(`// DISCONNECTED`, 'dim');
+    ws = null;
+  };
+
+  ws.onerror = () => log(`// CONNECTION ERROR`, 'warn');
+}
+
+function disconnect() {
+  ws?.send(JSON.stringify({ type: 'leave', callsign }));
+  ws?.close();
+}
+
+// ─── Audio Playback ───────────────────────────────────────────────────────────
+async function playPCM(arrayBuffer) {
+  if (!audioCtx) audioCtx = new AudioContext();
+  const int16 = new Int16Array(arrayBuffer);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+
+  const buffer = audioCtx.createBuffer(1, float32.length, SAMPLE_RATE);
+  buffer.copyToChannel(float32, 0);
+
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start();
+}
+
+// ─── PTT Recording ────────────────────────────────────────────────────────────
+async function startRecording() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  isRecording = true;
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { sampleRate: SAMPLE_RATE, channelCount: 1, echoCancellation: true }
+  });
+
+  if (!audioCtx) audioCtx = new AudioContext();
+  startViz(stream);
+  document.getElementById('ptt').classList.add('active');
+  setAudioStatus('TX');
+  log(`<< TRANSMITTING...`, 'bright');
+  ws.send(JSON.stringify({ type: 'talking', state: 'start', callsign }));
+  const source = audioCtx.createMediaStreamSource(stream);
+  const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+  processor.onaudioprocess = (e) => {
+    if (!isRecording) return;
+    const float32 = e.inputBuffer.getChannelData(0);
+
+    let sum = 0;
+    for (let i = 0; i < float32.length; i++) sum += float32[i] * float32[i];
+    const rms = Math.sqrt(sum / float32.length);
+
+    document.getElementById('ptt-hint').textContent = `RMS: ${rms.toFixed(4)}`;
+
+    if (rms < 0.01) return;
+
+    const resampled = resampleTo16k(float32, audioCtx.sampleRate);
+    const int16 = new Int16Array(resampled.length);
+    for (let i = 0; i < resampled.length; i++) {
+      int16[i] = Math.max(-32768, Math.min(32767, resampled[i] * 32768));
+    }
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(int16.buffer);
+      sentChunks++;
+      updateStats();
+    }
+  };
+
+  source.connect(processor);
+  processor.connect(audioCtx.destination);
+
+  // store refs to stop later
+  window._recStream = stream;
+  window._recProcessor = processor;
+  window._recSource = source;
+}
+
+function stopRecording() {
+  if (!isRecording) return;
+  isRecording = false;
+
+  window._recProcessor?.disconnect();
+  window._recSource?.disconnect();
+  window._recStream?.getTracks().forEach(t => t.stop());
+
+  stopViz();
+  document.getElementById('ptt').classList.remove('active');
+  setAudioStatus('IDLE');
+  log(`<< END TRANSMISSION`, 'dim');
+
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'talking', state: 'stop', callsign }));
+  }
+}
+
+// ─── PTT Events ───────────────────────────────────────────────────────────────
+const pttBtn = document.getElementById('ptt');
+pttBtn.addEventListener('mousedown',  () => startRecording());
+pttBtn.addEventListener('mouseup',    () => stopRecording());
+pttBtn.addEventListener('mouseleave', () => stopRecording());
+pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+pttBtn.addEventListener('touchend',   (e) => { e.preventDefault(); stopRecording(); });
+
+// Spacebar shortcut
+document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && !pttBtn.disabled) { e.preventDefault(); startRecording(); } });
+document.addEventListener('keyup',   (e) => { if (e.code === 'Space') stopRecording(); });
+</script>
+</body>
+</html>
